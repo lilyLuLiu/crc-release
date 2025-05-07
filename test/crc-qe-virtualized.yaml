@@ -10,14 +10,18 @@ spec:
   params:
     - name: SNAPSHOT
       type: string
+    - name: secret-az-credentials
+      default: az-crcqe-bot
+      type: string
   tasks:
-    - name: get-image
+    - name: init
       taskSpec:
         params:
           - name: SNAPSHOT
             type: string
         results:
           - name: output-image
+          - name: correlation
         steps:
           - name: get
             image: quay.io/konflux-ci/konflux-test:stable
@@ -30,24 +34,83 @@ spec:
               COMPONENT_CONTAINER_IMAGE=$(jq -r --arg component_name "crc-release" '.components[] | select(.name == $component_name) | .containerImage' <<< "${SNAPSHOT}")
               echo ${COMPONENT_CONTAINER_IMAGE}
               echo -n "${COMPONENT_CONTAINER_IMAGE}" | tee $(results.output-image.path)
+              echo -n $RANDOM$RANDOM | tee $(results.correlation.path)
       params:
         - name: SNAPSHOT
           value: $(params.SNAPSHOT)  
 
-    - name: get-content
-      taskSpec:
+    - name: provision-windows
+      taskRef: 
+        resolver: git
         params:
-          - name: image-name
-            type: string
-        steps:
-          - name: check-folder
-            image: $(params.image-name)
-            script: |
-              #!/bin/sh
-              ls /opt
-              echo "cheking folder"
-              ls /opt/2.49.0
+          - name: url
+            value: https://github.com/redhat-developer/mapt
+          - name: revision
+            value: v0.8.2
+          - name: pathInRepo
+            value: tkn/infra-azure-windows-desktop.yaml
       params:
-        - name: image-name
-          value: $(tasks.get-image.results.output-image)
+        - name: secret-az-credentials
+          value: az-crcqe-bot
+        - name: id
+          value: $(tasks.init.results.correlation)
+        - name: operation
+          value: create
+        - name: ownerKind
+          value: 'PipelineRun'
+        - name: ownerName
+          value: $(context.pipelineRun.name)
+        - name: ownerUid
+          value: $(context.pipelineRun.uid)
+        - name: tags
+          value: 'cicd=konflux,pipelinerun=$(context.pipelineRun.name)'
+    - name: install-crc
+      taskRef:
+        resolver: git
+        params:
+          - name: url
+            value: https://github.com/lilyLuLiu/ci-definitions
+          - name: revision
+            value: crc-support-oras
+          - name: pathInRepo
+            value: crc-support/tkn/task.yaml
+      params:
+        - name: os
+          value: windows
+        - name: secret-host
+          value: $(tasks.provision-windows.results.host-access-secret)
+        - name: asset-base-url
+          value: ""
+        - name: asset-oras-address
+          value: $(tasks.init.results.output-image)
+        - name: asset-name
+          value: crc-windows-installer.zip
+        - name: install
+          value: true
+        - name: force-fresh
+          value: false
+  finally:
+    - name: decommission-windows
+      taskRef:
+        resolver: git
+        params:
+          - name: url
+            value: https://github.com/redhat-developer/mapt
+          - name: revision
+            value: v0.8.2
+          - name: pathInRepo
+            value: tkn/infra-azure-windows-desktop.yaml
+      params:
+        - name: secret-az-credentials
+          value: az-crcqe-bot
+        - name: id
+          value: $(tasks.init.results.correlation)
+        - name: operation
+          value: destroy
+        - name: ownerKind
+          value: 'PipelineRun'
+        - name: ownerName
+          value: $(context.pipelineRun.name)
+        - name: ownerUid
+          value: $(context.pipelineRun.uid)
 
