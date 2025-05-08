@@ -38,7 +38,24 @@ spec:
       params:
         - name: SNAPSHOT
           value: $(params.SNAPSHOT)  
-
+    - name: get-content
+      taskSpec:
+        params:
+          - name: image-name
+            type: string
+        results:
+          - name: orasAddress
+        steps:
+          - name: check-folder
+            image: $(params.image-name)
+            script: |
+              #!/bin/sh
+              ls /opt
+              roasAddress=$(cat /opt/release-info)
+              echo -n $roasAddress | tee $(results.orasAddress.path)
+      params:
+        - name: image-name
+          value: $(tasks.init.results.output-image)
     - name: provision-windows
       taskRef: 
         resolver: git
@@ -82,7 +99,7 @@ spec:
         - name: asset-base-url
           value: ""
         - name: asset-oras-address
-          value: $(tasks.init.results.output-image)
+          value: $(tasks.get-content.results.orasAddress)
         - name: asset-name
           value: crc-windows-installer.zip
         - name: install
