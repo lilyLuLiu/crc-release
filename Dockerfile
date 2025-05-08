@@ -1,2 +1,2 @@
-FROM quay.io/rhn_support_lul/mytest1:2.49.0
+FROM quay.io/rhn_support_lul/crc-test:v1-windows
 COPY release-info /opt/
