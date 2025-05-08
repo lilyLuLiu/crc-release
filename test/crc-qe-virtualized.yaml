@@ -38,7 +38,24 @@ spec:
       params:
         - name: SNAPSHOT
           value: $(params.SNAPSHOT)  
-
+    - name: get-content
+      taskSpec:
+        params:
+          - name: image-name
+            type: string
+        results:
+          - name: orasAddress
+        steps:
+          - name: check-folder
+            image: $(params.image-name)
+            script: |
+              #!/bin/sh
+              ls /opt
+              roasAddress=$(cat /opt/release-info)
+              echo -n $roasAddress | tee $(results.orasAddress.path)
+      params:
+        - name: image-name
+          value: $(tasks.init.results.output-image)
     - name: provision-windows
       taskRef: 
         resolver: git
@@ -46,12 +63,16 @@ spec:
           - name: url
             value: https://github.com/redhat-developer/mapt
           - name: revision
-            value: v0.8.2
+            value: v0.9.0
           - name: pathInRepo
             value: tkn/infra-azure-windows-desktop.yaml
       params:
         - name: secret-az-credentials
           value: az-crcqe-bot
+        - name: windows-featurepack
+          value: "23h2-ent"
+        - name: windows-version
+          value: "11"
         - name: id
           value: $(tasks.init.results.correlation)
         - name: operation
@@ -80,9 +101,9 @@ spec:
         - name: secret-host
           value: $(tasks.provision-windows.results.host-access-secret)
         - name: asset-base-url
-          value: ""
+          value: "test"
         - name: asset-oras-address
-          value: $(tasks.init.results.output-image)
+          value: $(tasks.get-content.results.orasAddress)
         - name: asset-name
           value: crc-windows-installer.zip
         - name: install
@@ -97,7 +118,7 @@ spec:
           - name: url
             value: https://github.com/redhat-developer/mapt
           - name: revision
-            value: v0.8.2
+            value: v0.9.0
           - name: pathInRepo
             value: tkn/infra-azure-windows-desktop.yaml
       params:
