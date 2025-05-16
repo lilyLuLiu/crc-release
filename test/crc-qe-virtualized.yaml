@@ -105,11 +105,11 @@ spec:
         - name: asset-oras-address
           value: $(tasks.get-content.results.orasAddress)
         - name: asset-name
-          value: crc-windows-installer.zip
+          value: "crc-windows-installer.zip"
         - name: install
-          value: true
+          value: "true"
         - name: force-fresh
-          value: false
+          value: "false"
   finally:
     - name: decommission-windows
       taskRef:
