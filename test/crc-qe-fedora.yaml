@@ -10,9 +10,6 @@ spec:
   params:
     - name: SNAPSHOT
       type: string
-    - name: secret-az-credentials
-      default: az-crcqe-bot
-      type: string
   tasks:
     - name: init
       taskSpec:
@@ -31,10 +28,13 @@ spec:
             script: |
               #!/bin/sh
               echo $SNAPSHOT
-              COMPONENT_CONTAINER_IMAGE=$(jq -r --arg component_name "crc" '.components[] | select(.name == $component_name) | .containerImage' <<< "${SNAPSHOT}")
+              COMPONENT_CONTAINER_IMAGE=$(jq -r --arg component_name "crc-binary" '.components[] | select(.name == $component_name) | .containerImage' <<< "${SNAPSHOT}")
               echo ${COMPONENT_CONTAINER_IMAGE}
               echo -n "${COMPONENT_CONTAINER_IMAGE}" | tee $(results.output-image.path)
               echo -n $RANDOM$RANDOM | tee $(results.correlation.path)
+      params:
+        - name: SNAPSHOT
+          value: $(params.SNAPSHOT)  
     - name: provision-fedora
       taskRef: 
         resolver: git
@@ -42,7 +42,7 @@ spec:
           - name: url
             value: https://github.com/redhat-developer/mapt
           - name: revision
-            value: v0.9.0
+            value: v0.9.5
           - name: pathInRepo
             value: tkn/infra-aws-fedora.yaml
       params:
@@ -64,6 +64,8 @@ spec:
           value: "41"  
         - name: tags
           value: "pipelinerunName=$(context.pipelineRun.name)"
+      runAfter:
+        - init
     - name: install-crc
       taskRef:
         resolver: git
@@ -74,6 +76,8 @@ spec:
             value: main
           - name: pathInRepo
             value: crc-support/tkn/task.yaml
+      runAfter:
+        - provision-fedora
       params:
         - name: os
           value: "linux"
@@ -91,6 +95,8 @@ spec:
           value: "false"
         - name: download
           value: "false"
+        - name: debug
+          value: "true"
   finally:
     - name: decommission-fedora
       taskRef:
@@ -99,7 +105,7 @@ spec:
           - name: url
             value: https://github.com/redhat-developer/mapt
           - name: revision
-            value: v0.9.0
+            value: v0.9.5
           - name: pathInRepo
             value: tkn/infra-aws-fedora.yaml
       params:
